@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>最快投票</title>
+<style>body{font-family:system-ui;text-align:center;margin-top:40px}</style>
+</head>
+<body>
+<h2>你最喜欢的语言？</h2>
+<div id="opts">
+  <button onclick="vote('javascript')">JavaScript</button>
+  <button onclick="vote('python')">Python</button>
+  <button onclick="vote('java')">Java</button>
+  <button onclick="vote('csharp')">C#</button>
+  <button onclick="vote('cpp')">C++</button>
+</div>
+<p id="tip"></p>
+<hr>
+<h3>实时结果</h3>
+<pre id="res">加载中...</pre>
+
+<script>
+const OWNER = '你的GitHub用户名'
+const REPO  = '你的仓库名'
+const TOKEN = 'ghp_xxxxxxxx'   // 有 repo 权限的 Personal Access Token
+
+// 提交投票
+async function vote(opt) {
+  document.getElementById('tip').textContent = '投中了...';
+  await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/dispatches`, {
+    method: 'POST',
+    headers: {
+      'Accept': 'application/vnd.github+json',
+      'Authorization': `token ${TOKEN}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      event_type: 'vote',
+      client_payload: { data: JSON.stringify({[opt]: 1}) }
+    })
+  });
+  document.getElementById('tip').textContent = '投票完成！';
+  setTimeout(loadRes, 1500);   // 稍后再拉新结果
+}
+
+// 读取结果
+async function loadRes() {
+  const url = `https://raw.githubusercontent.com/${OWNER}/${REPO}/main/vote.json`
+  const j = await fetch(url).then(r => r.json())
+  document.getElementById('res').textContent =
+    Object.entries(j).map(([k,v])=>`${k}: ${v} 票`).join('\n')
+}
+loadRes(); // 进来就看一眼
+</script>
+</body>
+</html>
