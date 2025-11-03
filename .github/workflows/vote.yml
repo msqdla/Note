@@ -1,17 +1,25 @@
-# 假设在某个jobs的steps中
-steps:
-  - name: Update vote count  # 步骤名称（可选但建议添加）
-    run: |  # 使用run定义要执行的Shell命令
-      OLD=$(cat vote.json)  # 读取旧值（Shell命令）
-      NEW=$((OLD + 1))  # 计算新值（示例逻辑，根据实际需求调整）
-      echo $NEW > vote.json  # 写入新值到文件
-      # 配置git并提交
-      git config --global user.name "github-actions[bot]"
-      git config --global user.email "github-actions[bot]@users.noreply.github.com"
-      git add vote.json
-      git commit -m "Update vote count to $NEW"
-      git push
-    # 若需要使用github上下文（例如获取事件数据），用${{ }}包裹
-    # 示例：使用client_payload中的数据（如果需要）
-    # env:
-    #   DATA: ${{ github.event.client_payload.data }}  # 正确引用上下文
+name: Vote Update
+
+on:
+  repository_dispatch:
+    types: [vote]
+
+jobs:
+  update-vote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Commit vote
+        run: |
+          OLD=$(cat vote.json)
+          NEW=$(echo "$OLD" "${{ github.event.client_payload.data }}" | jq -s 'add')
+          echo "$NEW" | jq . > vote.json
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add vote.json
+          git diff --quiet && git diff --staged --quiet || git commit -m "vote +1"
+          git push
